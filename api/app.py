@@ -14,7 +14,6 @@ def load():
 
 load()
 
-
 # Custom CSS Styling
 
 st.markdown("""
