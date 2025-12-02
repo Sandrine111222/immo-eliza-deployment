@@ -4,9 +4,10 @@ import numpy as np
 
 from predict import load_model, predict_record, MODEL_FEATURES
 
-#
-# Load Model (cached)
 
+# -------------------------------
+# Load model
+# -------------------------------
 @st.cache_resource
 def load():
     load_model()
@@ -14,20 +15,18 @@ def load():
 
 load()
 
-# Custom CSS Styling
 
+# -------------------------------
+# Custom CSS
+# -------------------------------
 st.markdown("""
     <style>
-
-    /* Background image */
     .stApp {
         background-image: url("assets/bg.jpg");
         background-size: cover;
         background-attachment: fixed;
         background-position: center;
     }
-
-    /* Hero Card */
     .hero {
         padding: 2rem;
         background: linear-gradient(135deg, #6C63FF 0%, #B49CFF 100%);
@@ -37,8 +36,6 @@ st.markdown("""
         margin-bottom: 2rem;
         box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
-
-    /* Content cards */
     .card {
         padding: 1.5rem;
         background: #ffffffcc;
@@ -47,77 +44,97 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.08);
         backdrop-filter: blur(4px);
     }
-
-    /* Section headers */
-    h3 {
-        color: #6C63FF;
-    }
-
+    h3 { color: #6C63FF; }
     </style>
 """, unsafe_allow_html=True)
 
 
 
+# -------------------------------
 # Hero Header
-
+# -------------------------------
 st.markdown("""
 <div class="hero">
     <h1>🏡 Immo Eliza House Price Predictor</h1>
-    <p>Your sleek and elegant gateway to property insights.</p>
+    <p>Easily estimate a property's selling price.</p>
 </div>
 """, unsafe_allow_html=True)
 
 
-# Field Categories
 
-numeric_fields = [
-    'build_year', 'facades', 'living_area', 'number_rooms',
-    'postal_code', 'property_id'
-]
+# -------------------------------
+# Field definitions (internal)
+# -------------------------------
+numeric_fields = {
+    "build_year": "Year the property was built",
+    "facades": "Number of façades",
+    "living_area": "Living area (m²)",
+    "number_rooms": "Number of rooms",
+    "postal_code": "Postal code",
+    "property_id": "Property reference number"
+}
 
-bool_fields = ['garden', 'swimming_pool', 'terrace', 'has_garden']
+bool_fields = {
+    "garden": "Has a garden?",
+    "swimming_pool": "Has a swimming pool?",
+    "terrace": "Has a terrace?",
+    "has_garden": "Official garden indicator"
+}
 
-text_fields = [
-    'locality_name', 'property_type', 'property_type_name',
-    'property_url', 'state', 'province', 'state_mapped', 'region'
-]
+text_fields = {
+    "locality_name": "Locality",
+    "property_type": "Property type",
+    "property_type_name": "Detailed property type",
+    "property_url": "Listing URL",
+    "state": "State of the property",
+    "province": "Province",
+    "state_mapped": "Mapped property condition",
+    "region": "Region"
+}
 
 
-# Form Card
-
+# -------------------------------
+# Form
+# -------------------------------
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("Enter Property Details")
 
 with st.form("prediction_form"):
 
     # Numeric fields
-    st.markdown("### 📏 Numeric Values")
+    st.markdown("### 📏 Property Measurements")
     cols = st.columns(3)
-    for i, field in enumerate(numeric_fields):
+    for i, (field, label) in enumerate(numeric_fields.items()):
         with cols[i % 3]:
-            user_input = st.number_input(
-                field,
+            value = st.number_input(
+                label,
                 value=None,
-                placeholder="Leave empty if unknown"
+                placeholder="Optional"
             )
-        st.session_state[field] = user_input
+        st.session_state[field] = value
 
     # Boolean fields
-    st.markdown("### 🔘 Boolean Fields")
+    st.markdown("### 🔘 Features")
     cols = st.columns(2)
-    for i, field in enumerate(bool_fields):
+    for i, (field, label) in enumerate(bool_fields.items()):
         with cols[i % 2]:
-            user_input = st.selectbox(
-                field,
-                [None, True, False],
+            choice = st.selectbox(
+                label,
+                ["Choose an option", "Yes", "No"],
                 index=0
             )
-        st.session_state[field] = user_input
+        if choice == "Yes":
+            st.session_state[field] = True
+        elif choice == "No":
+            st.session_state[field] = False
+        else:
+            st.session_state[field] = None
 
     # Text fields
-    st.markdown("### 📝 Text Fields")
-    for field in text_fields:
-        st.session_state[field] = st.text_input(field, value="")
+    st.markdown("### 📝 Location & Description")
+    for field, label in text_fields.items():
+        txt = st.text_input(label, value="", placeholder="Optional")
+        st.session_state[field] = txt if txt else None
 
     submitted = st.form_submit_button("✨ Predict Price")
 
@@ -125,13 +142,15 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 
-# Prediction Card
-
+# -------------------------------
+# Prediction
+# -------------------------------
 if submitted:
+
     cleaned = {
-        k: (v if v != "" else None)
+        k: (v if v not in ["", "Choose an option"] else None)
         for k, v in st.session_state.items()
-        if k in numeric_fields + bool_fields + text_fields
+        if k in numeric_fields or k in bool_fields or k in text_fields
     }
 
     try:
@@ -149,6 +168,3 @@ if submitted:
 
     except Exception as e:
         st.error(f"Prediction failed: {e}")
-
-
-
