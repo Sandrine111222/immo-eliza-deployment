@@ -5,9 +5,9 @@ import numpy as np
 from predict import load_model, predict_record, MODEL_FEATURES
 
 
-# -------------------------------
+
 # Load model
-# -------------------------------
+
 @st.cache_resource
 def load():
     load_model()
@@ -16,9 +16,9 @@ def load():
 load()
 
 
-# -------------------------------
+
 # Custom CSS
-# -------------------------------
+
 st.markdown("""
     <style>
     .stApp {
@@ -50,9 +50,9 @@ st.markdown("""
 
 
 
-# -------------------------------
+
 # Hero Header
-# -------------------------------
+
 st.markdown("""
 <div class="hero">
     <h1>🏡 Immo Eliza House Price Predictor</h1>
@@ -62,9 +62,9 @@ st.markdown("""
 
 
 
-# -------------------------------
+
 # Field definitions (internal)
-# -------------------------------
+
 numeric_fields = {
     "build_year": "Year the property was built",
     "facades": "Number of façades",
@@ -93,9 +93,9 @@ text_fields = {
 }
 
 
-# -------------------------------
+
 # Form
-# -------------------------------
+
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("Enter Property Details")
 
@@ -142,16 +142,18 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 
-# -------------------------------
+
 # Prediction
-# -------------------------------
+
 if submitted:
 
     cleaned = {
-        k: (v if v not in ["", "Choose an option"] else None)
-        for k, v in st.session_state.items()
-        if k in numeric_fields or k in bool_fields or k in text_fields
+    k: (v if v not in ["", "Choose an option"] else None)
+    for k, v in st.session_state.items()
+    if k in numeric_fields or k in bool_fields or k in text_fields
     }
+
+    
 
     try:
         result = predict_record(cleaned)
