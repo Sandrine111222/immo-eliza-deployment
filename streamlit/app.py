@@ -16,13 +16,12 @@ def load():
 load()
 
 
-
 # Custom CSS
 
 st.markdown("""
     <style>
     .stApp {
-        background-image: url("assets/bg.jpg");
+        background-image: url("streamlit/assets/bg.jpg");
         background-size: cover;
         background-attachment: fixed;
         background-position: center;
@@ -50,7 +49,6 @@ st.markdown("""
 
 
 
-
 # Hero Header
 
 st.markdown("""
@@ -63,7 +61,7 @@ st.markdown("""
 
 
 
-# Field definitions (internal)
+# Field definitions
 
 numeric_fields = {
     "build_year": "Year the property was built",
@@ -107,8 +105,8 @@ with st.form("prediction_form"):
     for i, (field, label) in enumerate(numeric_fields.items()):
         with cols[i % 3]:
             value = st.number_input(
-                label,
-                value=None,
+                label, 
+                value=None, 
                 placeholder="Optional"
             )
         st.session_state[field] = value
@@ -123,12 +121,11 @@ with st.form("prediction_form"):
                 ["Choose an option", "Yes", "No"],
                 index=0
             )
-        if choice == "Yes":
-            st.session_state[field] = True
-        elif choice == "No":
-            st.session_state[field] = False
-        else:
-            st.session_state[field] = None
+        st.session_state[field] = (
+            True if choice == "Yes"
+            else False if choice == "No"
+            else None
+        )
 
     # Text fields
     st.markdown("### 📝 Location & Description")
@@ -141,19 +138,16 @@ with st.form("prediction_form"):
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-
-
+pip
 # Prediction
 
 if submitted:
 
     cleaned = {
-    k: (v if v not in ["", "Choose an option"] else None)
-    for k, v in st.session_state.items()
-    if k in numeric_fields or k in bool_fields or k in text_fields
+        k: (v if v not in ["", "Choose an option"] else None)
+        for k, v in st.session_state.items()
+        if k in numeric_fields or k in bool_fields or k in text_fields
     }
-
-    
 
     try:
         result = predict_record(cleaned)
