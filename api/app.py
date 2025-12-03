@@ -1,188 +1,174 @@
 # app.py
-from typing import Any, Dict
-import os
-import logging
-import traceback
-
-from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
-import joblib
-import numpy as np
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from pydantic import RootModel
+from typing import Optional, Literal, Dict, Any
+from contextlib import asynccontextmanager
 import pandas as pd
-
-app = FastAPI(title="Property price prediction API")
-
-logger = logging.getLogger("uvicorn.error")
-
-
-class PredictionRequest(BaseModel):
-    # We accept free-form JSON. Use dict to allow arbitrary features.
-    __root__: Dict[str, Any]
+import numpy as np
+import joblib
+from pathlib import Path
 
 
-def load_model_and_preprocessor():
+# 1. MODEL FEATURES
+
+
+MODEL_FEATURES = [
+    'build_year', 'facades', 'garden', 'living_area', 'locality_name',
+    'number_rooms', 'postal_code', 'property_id', 'property_type',
+    'property_url', 'state', 'swimming_pool', 'terrace', 'province',
+    'property_type_name', 'state_mapped', 'region', 'has_garden'
+]
+
+_model = None  # will be loaded in lifespan
+
+
+
+# 2. Load the model
+
+
+def load_model(path: str = None):
     """
-    Try to load a pre-trained model and optional preprocessor from disk.
-    Expected files:
-      - model.pkl   (scikit-learn-like estimator with predict())
-      - preprocessor.pkl (optional) - transformer that accepts DataFrame and returns transformed array
-    If not found, returns a fallback dummy model.
+    Loads the model from best_house_price_model.pkl.
     """
-    model_path = "model.pkl"
-    preproc_path = "preprocessor.pkl"
-    model = None
-    preprocessor = None
+    global _model
 
-    try:
-        if os.path.exists(model_path):
-            model = joblib.load(model_path)
-            logger.info("Loaded model from %s", model_path)
-        if os.path.exists(preproc_path):
-            preprocessor = joblib.load(preproc_path)
-            logger.info("Loaded preprocessor from %s", preproc_path)
-    except Exception as e:
-        logger.exception("Failed to load model/preprocessor: %s", e)
+    if path is None:
+        base = Path(__file__).resolve().parent
+        path = base / "best_house_price_model.pkl"
 
-    # If no model found, create a simple fallback
-    if model is None:
-        class DummyModel:
-            def predict(self, X):
-                # if X is pandas DataFrame: compute simple score:
-                if isinstance(X, pd.DataFrame):
-                    numeric_cols = X.select_dtypes(include=[np.number]).columns
-                    if len(numeric_cols) > 0:
-                        # simple heuristic: sum numeric features (scaled)
-                        return (X[numeric_cols].sum(axis=1).values * 1000).astype(float)
-                    else:
-                        # no numeric data -> return constant
-                        return np.array([100000.0] * len(X))
-                # if numpy array:
-                try:
-                    return (np.sum(X, axis=1) * 1000).astype(float)
-                except Exception:
-                    return np.array([100000.0] * X.shape[0])
-
-        model = DummyModel()
-        logger.info("Using DummyModel fallback")
-
-    return model, preprocessor
+    _model = joblib.load(path)
 
 
-MODEL, PREPROCESSOR = load_model_and_preprocessor()
+def _ensure_loaded():
+    if _model is None:
+        raise RuntimeError("Model is not loaded. (Check lifespan loader)")
 
 
-def preprocess_input(payload: Dict[str, Any]):
-    """
-    Convert incoming JSON (dict) into a DataFrame and apply any preprocessor if available.
-    This function attempts to:
-      - Convert top-level scalars into a single-row DataFrame
-      - Flatten nested dicts one level (common for e.g. {"location": {"lat":..., "lng":...}})
-      - Convert lists of numbers to repeated columns (list -> col_0, col_1, ...), but normally
-        you should send all features as top-level scalar/strings.
-    """
-    try:
-        # If payload already contains a top-level key whose value is a list of dicts (batch):
-        # e.g. {"__root__": [{"a":1}, {"a":2}]} -- but Pydantic root wraps it; here we assume single property.
-        # We'll just support single-instance payloads; user can post a list to batch later if desired.
-        # Flatten one-level nested dicts:
-        flat = {}
-        for k, v in payload.items():
-            if isinstance(v, dict):
-                for subk, subv in v.items():
-                    flat[f"{k}_{subk}"] = subv
-            elif isinstance(v, list):
-                # if list of numbers -> expand
-                if all(isinstance(x, (int, float)) for x in v):
-                    for i, item in enumerate(v):
-                        flat[f"{k}_{i}"] = item
-                else:
-                    # otherwise store as string
-                    flat[k] = str(v)
-            else:
-                flat[k] = v
+# 3. Input → DataFrame
 
-        df = pd.DataFrame([flat])
 
-        # Optional preprocessing step (if preprocessor exists)
-        if PREPROCESSOR is not None:
-            # Expect PREPROCESSOR to accept a DataFrame and return a numpy array
-            X = PREPROCESSOR.transform(df)
-            return X, df
-        else:
-            # If no preprocessor, attempt to:
-            # - Fill missing numeric with 0, convert non-numeric to category codes,
-            # - Return numpy array of numeric columns + categorical codes
-            df_filled = df.copy()
-            for col in df_filled.columns:
-                if pd.api.types.is_numeric_dtype(df_filled[col]):
-                    df_filled[col] = df_filled[col].fillna(0)
-                else:
-                    # convert to category codes
-                    df_filled[col] = df_filled[col].astype("category").cat.codes.replace(-1, 0)
+def _json_to_dataframe(payload: Dict[str, Any]) -> pd.DataFrame:
+    df = pd.DataFrame([payload])
 
-            X = df_filled.values.astype(float)
-            return X, df
+    # Add missing columns
+    for col in MODEL_FEATURES:
+        if col not in df.columns:
+            df[col] = None
 
-    except Exception as e:
-        logger.error("Preprocessing failed: %s\n%s", e, traceback.format_exc())
-        raise
+    return df[MODEL_FEATURES]
+
+
+# 4. Predict
+
+
+def _predict_dataframe(df: pd.DataFrame) -> np.ndarray:
+    _ensure_loaded()
+    preds = _model.predict(df)
+    return preds.ravel()
+
+
+def predict_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    df = _json_to_dataframe(record)
+    preds = _predict_dataframe(df)
+    return {"predictions": [float(p) for p in preds]}
+
+
+# 5. FastAPI Models (Input / Output)
+
+
+class PropertyData(BaseModel):
+    LivingArea: int = Field(...)
+    TypeOfProperty: Literal["apartment", "house", "land", "office", "garage"]
+    Bedrooms: int = Field(...)
+    PostalCode: int = Field(...)
+    SurfaceOfGood: Optional[int] = None
+    Garden: Optional[bool] = None
+    GardenArea: Optional[int] = None
+    SwimmingPool: Optional[bool] = None
+    Furnished: Optional[bool] = None
+    Openfire: Optional[bool] = None
+    Terrace: Optional[bool] = None
+    NumberOfFacades: Optional[int] = None
+    ConstructionYear: Optional[int] = None
+    StateOfBuilding: Optional[
+        Literal["to be done up", "to restore", "to renovate"]
+    ] = None
+    Kitchen: Optional[
+        Literal["not installed", "usa not installed", "installed"]
+    ] = None
+
+
+class PredictionInput(RootModel):
+    root: PropertyData
+
+
+class PredictionOutput(BaseModel):
+    prediction: Optional[float]
+    status_code: int
+
+
+# 6. Lifespan (modern startup loader)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_model()
+    print("Model loaded 🌟")
+    yield
+
+
+app = FastAPI(title="Immo-Eliza Prediction API", lifespan=lifespan)
+
+
+
+# 7. Routes
 
 
 @app.get("/", response_model=str)
 async def root():
-    """
-    Healthcheck endpoint.
-    """
     return "alive"
 
 
-@app.post("/predict")
-async def predict_endpoint(request: Request):
-    """
-    Expect JSON body with property features. Example:
-    {
-      "area": 85,
-      "bedrooms": 2,
-      "bathrooms": 1,
-      "location": {"lat": 50.85, "lng": 4.35},
-      "has_garden": true,
-      "year_built": 1995
-    }
-    Returns JSON:
-    { "prediction": 123456.78, "model": "loaded" }
-    """
+@app.post("/predict", response_model=PredictionOutput)
+async def predict_endpoint(input_data: PredictionInput):
     try:
-        payload = await request.json()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+        record = input_data.root.model_dump()
 
-    # Allow either {"__root__": {...}} from Pydantic root models OR raw dict
-    if "__root__" in payload and isinstance(payload["__root__"], dict):
-        payload = payload["__root__"]
-
-    # Validate that we have a dict
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Expected a JSON object with property features.")
-
-    try:
-        X, df = preprocess_input(payload)
-
-        # prediction
-        preds = MODEL.predict(X)
-        # If model returns array-like
-        try:
-            pred_value = float(np.asarray(preds).ravel()[0])
-        except Exception:
-            # last resort: str
-            pred_value = preds[0]
-
-        # Return contextual info: the raw features (dataframe) and the prediction
-        return {
-            "prediction": pred_value,
-            "model": "loaded" if os.path.exists("model.pkl") else "dummy",
-            "input_preview": df.to_dict(orient="records")[0],
+        # Convert external names → model feature names
+        mapped = {
+            "living_area": record["LivingArea"],
+            "property_type": record["TypeOfProperty"],
+            "number_rooms": record["Bedrooms"],
+            "postal_code": record["PostalCode"],
+            "build_year": record["ConstructionYear"],
+            "facades": record["NumberOfFacades"],
+            "garden": record["Garden"],
+            "has_garden": record["Garden"],
+            "terrace": record["Terrace"],
+            "swimming_pool": record["SwimmingPool"],
+            "property_url": None,
+            "property_id": None,
+            "locality_name": None,
+            "province": None,
+            "region": None,
+            "state": record["StateOfBuilding"],
+            "state_mapped": record["StateOfBuilding"],
+            "property_type_name": record["TypeOfProperty"],
         }
 
+        # Predict
+        result = predict_record(mapped)
+        pred_value = result["predictions"][0]
+
+        return PredictionOutput(
+            prediction=pred_value,
+            status_code=200
+        )
+
     except Exception as e:
-        logger.exception("Prediction failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
+        return PredictionOutput(
+            prediction=None,
+            status_code=500
+        )
+
