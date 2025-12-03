@@ -68,8 +68,7 @@ numeric_fields = {
     "facades": "Number of façades",
     "living_area": "Living area (m²)",
     "number_rooms": "Number of rooms",
-    "postal_code": "Postal code",
-    "property_id": "Property reference number"
+    "postal_code": "Postal code"
 }
 
 bool_fields = {
@@ -83,7 +82,6 @@ text_fields = {
     "locality_name": "Locality",
     "property_type": "Property type",
     "property_type_name": "Detailed property type",
-    "property_url": "Listing URL",
     "state": "State of the property",
     "province": "Province",
     "state_mapped": "Mapped property condition",
