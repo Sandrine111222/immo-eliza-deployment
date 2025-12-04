@@ -85,6 +85,9 @@ The cleaned dataset contains:
 
 -Deploying the application on Streamlit Community Cloud.
 
+![Alternative text describing image](Screenshot 2025-12-04 at 15-03-26 Streamlit.png)
+
+
 
 ---
 
@@ -92,19 +95,24 @@ The cleaned dataset contains:
 # Project Structure
 
 ```bash
-IMMOELIZA_ML/
-│
-├── Cleaning
-│
-├── Predict.py
-│
-├── test.ipynb
-|
-|── house.py
-|
-├── test.py
-│
-└── README.md
+immo-eliza-deployment/
+├── api/
+│   ├── app.py
+│   ├── predict.py
+│   ├── schemas.py
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── models/       ← model files (e.g. *.joblib, *.pkl)
+├── streamlit/
+│   ├── streamlit_app.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── docker/           
+├── render.yaml       
+├── requirements.txt 
+├── test.py           
+└── README.md       
+
 
 
 ---
