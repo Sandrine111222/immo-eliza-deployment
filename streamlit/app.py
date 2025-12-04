@@ -4,8 +4,6 @@ import numpy as np
 
 from predict import load_model, predict_record, MODEL_FEATURES
 
-
-
 # Load model
 
 @st.cache_resource
@@ -14,7 +12,6 @@ def load():
     return True
 
 load()
-
 
 # Custom CSS
 
@@ -48,17 +45,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-
-# Hero Header
+# Header
 
 st.markdown("""
 <div class="hero">
-    <h1>🏡 Immo Eliza House Price Predictor</h1>
+    <h1> Immo Eliza House Price Predictor</h1>
     <p>Easily estimate a property's selling price.</p>
 </div>
 """, unsafe_allow_html=True)
-
-
 
 
 # Field definitions
@@ -88,30 +82,32 @@ text_fields = {
     "region": "Region"
 }
 
-
-
-# Form
+# Input Form
 
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("Enter Property Details")
 
 with st.form("prediction_form"):
 
-    # Numeric fields
-    st.markdown("### 📏 Property Measurements")
+    # Numeric Fields
+    st.markdown("### Property Measurements")
     cols = st.columns(3)
+
     for i, (field, label) in enumerate(numeric_fields.items()):
         with cols[i % 3]:
             value = st.number_input(
-                label, 
-                value=None, 
+                label,
+                value=None,
+                step=1,          # 🔒 force integer stepping
+                format="%d",     # 🔒 force integer formatting
                 placeholder="Optional"
             )
-        st.session_state[field] = value
+        st.session_state[field] = int(value) if value not in (None, "") else None
 
-    # Boolean fields
+    # Boolean Fields
     st.markdown("### 🔘 Features")
     cols = st.columns(2)
+
     for i, (field, label) in enumerate(bool_fields.items()):
         with cols[i % 2]:
             choice = st.selectbox(
@@ -126,7 +122,7 @@ with st.form("prediction_form"):
         )
 
     # Text fields
-    st.markdown("### 📝 Location & Description")
+    st.markdown("### Location & Description")
     for field, label in text_fields.items():
         txt = st.text_input(label, value="", placeholder="Optional")
         st.session_state[field] = txt if txt else None
@@ -135,27 +131,26 @@ with st.form("prediction_form"):
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-
-pip
 # Prediction
 
 if submitted:
 
     cleaned = {
-        k: (v if v not in ["", "Choose an option"] else None)
+        k: v
         for k, v in st.session_state.items()
         if k in numeric_fields or k in bool_fields or k in text_fields
     }
 
     try:
+        # Model returns a float → convert to int so final output has no float
         result = predict_record(cleaned)
-        prediction = result["predictions"][0]
+        prediction = int(result["predictions"][0])
 
         st.markdown(f"""
         <div class="card" style="text-align:center;">
-            <h2>💶 Estimated Price</h2>
+            <h2>Estimated Price</h2>
             <p style="font-size: 2rem; font-weight: bold; color:#6C63FF;">
-                € {prediction:,.2f}
+                € {prediction:,}
             </p>
         </div>
         """, unsafe_allow_html=True)
