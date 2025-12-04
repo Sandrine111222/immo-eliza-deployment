@@ -85,8 +85,7 @@ The cleaned dataset contains:
 
 -Deploying the application on Streamlit Community Cloud.
 
-![Alternative text describing image](Screenshot 2025-12-04 at 15-03-26 Streamlit.png)
-
+![App Screenshot](./images/Screenshot 2025-12-04 at 15-03-26 Streamlit.png)
 
 
 ---
