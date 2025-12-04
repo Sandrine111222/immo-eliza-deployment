@@ -1,8 +1,9 @@
 # Description 📊
 
-The project analyzes Belgian real estate data sourced from **ImmoVlan**.
 
-This subpart focuses on deployment and creations of apps. Web developers should be able access the predictions whenever they need to. They also will have access to a small web application for the non-technical employees and possibly their clients to use. 
+
+
+This subpart focuses on deployment and creations of an API and app. Web developers should be able access the predictions whenever they need to. They also will have access to a small web application for the non-technical employees and possibly their clients to use. 
 The goal is to be able to predict prices of a house with desired features using these user-friendly apps. 
 
 
@@ -13,9 +14,9 @@ The goal is to be able to predict prices of a house with desired features using 
 - [Project Overview](#project-overview)  
 - [Features](#features)  
 - [Dataset](#dataset)  
-- [Creating FastAPI and Docker](#creating-FastAPI-and-Docker)  
+- [Creating FastAPI and Docker](#creating-fastapi-and-docker)  
 - [Creating Streamlit](#creating-streamlit)  
-- [Make the work publicly accessible](#evaluate-the-performance-of-a-model)   
+- [Make the work publicly accessible](#make-the-work-publicly-accessible)   
 - [Project Structure](#project-structure)   
 
 
@@ -25,22 +26,17 @@ The goal is to be able to predict prices of a house with desired features using 
 
 The project includes:
 
-- Preprocessing data for machine learning  
-- Applying linear regression in a real-life context  
-- Exploring multiple regression models  
-- Evaluating model performance  
-- Using hyperparameter tuning and cross-validation  
+- deploying a machine learning model through an API endpoint using FastAPI
+- deploying said API to Render using docker
+- build a small web application using Streamlit
 
 ---
 
 # Features
 
-- Handling missing values using imputation  
-- Converting categorical variables using one-hot encoding  
-- Standardizing numerical features  
-- Tracking preprocessing steps with a pipeline  
-- Splitting the dataset for training/evaluation  
-- Ensuring a reusable and clean ML workflow  
+- for every API use case, decide on the input and output
+- data need to be in JSON format and return the data in the same format
+- Python code needs to handle the conversion from and to JSON 
 
 ---
 
@@ -59,53 +55,36 @@ The cleaned dataset contains:
   
 ---
 
-# Creating Pipeline
+# Creating FastAPI and Docker
 
 ### Key steps
 
-1. **Clean data**  
-   - Handle duplicates  
-   - Manage missing values  
-   - Drop unnecessary rows/columns  
+1. **Create the API**  
+   - A route at / that accepts:
+        GET requests and returns "alive" if the server is up and running
+   - A route at /predict that accepts:
+        POST requests that receives the data of a property in JSON format and returns a prediction in JSON format
 
-2. **Preprocess data**  
-   - Impute missing values  
-   - Encode categorical features  
-   - Scale numerical features  
+2. **Create a Dockerfile for the API**  
+   - Docker packages your application and its dependencies into a single image that can be run on any machine.
+   - The Dockerfile is a text file that contains all the commands to build an image and then run it as a container.
 
-3. **Train model**  
-   - Split dataset  
-   - Fit model  
-
-4. **Predict**
-
-5. **Evaluate model**  
-   - R², MSE, MAE  
-   - Detect overfitting  
+3. **Deploy your Docker image on Render.com**  
+   - Render allows you to build your Docker container on their server and send requests to it.
 
 ---
 
-# Explore Machine Learning Models
+# Creating Streamlit
 
-- Baseline: **Linear Regression**  
-- Compare with non-linear models such as:  
-  - Decision Tree  
-  - Random Forest  
-  - Support Vector Regression  
-  - XGBoost  
+- Create a small web application using Streamlit that will allow non-technical people to use your API.
+- The Streamlit application will send requests to your API and display the results in a visual interface.
 
 ---
 
-# Evaluate the Performance of a Model
+# Make the work publicly accessible
 
-| Model                    | RMSE        | MAE         | R²     |
-| ------------------------ | ----------- | ----------- | ------ |
-| **Linear Regression**    | 176,555.453 | 103,023.992 | 0.511  |
-| **Decision Tree**        | 181,462.994 | 98,865.731  | 0.483  |
-| **Random Forest**        | 147,918.026 | 73,414.115  | 0.657  |
-| **XGBoost**              | 146,005.958 | 76,646.448  | 0.665  |
+-Deploying the application on Streamlit Community Cloud.
 
-Overfitting might be occurring (R² train values are too high compared to R² test).
 
 ---
 
