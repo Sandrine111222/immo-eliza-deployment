@@ -98,8 +98,8 @@ with st.form("prediction_form"):
             value = st.number_input(
                 label,
                 value=None,
-                step=1,          # 🔒 force integer stepping
-                format="%d",     # 🔒 force integer formatting
+                step=1,          #  force integer stepping
+                format="%d",     #  force integer formatting
                 placeholder="Optional"
             )
         st.session_state[field] = int(value) if value not in (None, "") else None
@@ -127,7 +127,7 @@ with st.form("prediction_form"):
         txt = st.text_input(label, value="", placeholder="Optional")
         st.session_state[field] = txt if txt else None
 
-    submitted = st.form_submit_button("✨ Predict Price")
+    submitted = st.form_submit_button("Predict Price")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
