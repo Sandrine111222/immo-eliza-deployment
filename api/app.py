@@ -114,7 +114,7 @@ class PredictionOutput(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_model()
-    print("Model loaded 🌟")
+    print("Model loaded")
     yield
 
 
